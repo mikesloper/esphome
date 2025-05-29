@@ -41,6 +41,9 @@ from esphome.yaml_util import ESPHomeDataBase, ESPLiteralValue, is_secret
 _LOGGER = logging.getLogger(__name__)
 
 
+prev_has_enabler = False
+enabler_tag = ""
+
 def iter_components(config):
     for domain, conf in config.items():
         component = get_component(domain)
