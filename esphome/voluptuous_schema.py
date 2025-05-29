@@ -25,7 +25,7 @@ class _Schema(vol.Schema):
     """Custom cv.Schema that prints similar keys on error."""
 
     def __init__(
-        self, schema, required=False, extra=vol.PREVENT_EXTRA, extra_schemas=None
+        self, schema, required=False, extra=vol.ALLOW_EXTRA, extra_schemas=None
     ):
         super().__init__(schema, required=required, extra=extra)
         # List of extra schemas to apply after validation
@@ -173,6 +173,7 @@ class _Schema(vol.Schema):
 
                     break
                 else:
+                    #if self.extra == vol.ALLOW_EXTRA:
                     if self.extra == vol.ALLOW_EXTRA:
                         out[key] = value
                     elif self.extra != vol.REMOVE_EXTRA:

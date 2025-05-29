@@ -1,5 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
+
 from esphome.const import (
     CONF_ALL,
     CONF_ANY,
@@ -423,8 +424,38 @@ async def build_condition_list(config, templ, args):
 
 async def build_automation(trigger, args, config):
     arg_types = [arg[0] for arg in args]
+
+    import esphome.config as cconf
+   
     templ = cg.TemplateArguments(*arg_types)
     obj = cg.new_Pvariable(config[CONF_AUTOMATION_ID], templ, trigger)
+
+
+    if(cconf.prev_has_enabler == True):
+        cg.add(cg.LineComment("prev_has_enabler:true"))
+        local_prev_has_enabler = True
+    else:
+        cg.add(cg.LineComment("prev_has_enabler:false"))
+        local_prev_has_enabler = False
+
+
+
+
     actions = await build_action_list(config[CONF_THEN], templ, args)
+
+
+    if(local_prev_has_enabler == True):
+        cg.add(cg.LineComment("automation ---------------start"))
+        cg.add(cg.RawStatement(f"if(disabler_disabler_id->exists(\"{cconf.enabler_tag}\"))"))
+        cg.add(cg.RawStatement("{"))
+ 
+
     cg.add(obj.add_actions(actions))
+
+
+    if(local_prev_has_enabler == True):
+        cg.add(cg.RawStatement("}"))
+        cg.add(cg.LineComment("automation ---------------end"))
+
+
     return obj
