@@ -32,7 +32,9 @@ Component = esphome_ns.class_("Component")
 ComponentPtr = Component.operator("ptr")
 PollingComponent = esphome_ns.class_("PollingComponent", Component)
 Application = esphome_ns.class_("Application")
-optional = global_ns.namespace("std").class_("optional")
+# Create optional with explicit namespace to avoid ambiguity with std::optional
+# The generated code will use esphome::optional instead of just optional
+optional = global_ns.namespace("esphome").class_("optional")
 arduino_json_ns = global_ns.namespace("ArduinoJson")
 JsonObject = arduino_json_ns.class_("JsonObject")
 JsonObjectConst = arduino_json_ns.class_("JsonObjectConst")
