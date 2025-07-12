@@ -3,6 +3,7 @@ import logging
 
 import esphome.codegen as cg
 import esphome.config_validation as cv
+import pprint
 
 from esphome.const import (
     CONF_ALL,
@@ -531,8 +532,34 @@ async def lambda_action_to_code(
     template_arg: cg.TemplateArguments,
     args: TemplateArgsType,
 ) -> MockObj:
+
+    import esphome.config as cconf
+    
+    if(cconf.prev_has_enabler == True):
+        cg.add(cg.LineComment("prev_has_enabler2:true"))
+        local_prev_has_enabler = True
+    else:
+        cg.add(cg.LineComment("prev_has_enabler2:false"))
+        local_prev_has_enabler = False
+    
+    #pprint.pprint(args)
+
+
     lambda_ = await cg.process_lambda(config, args, return_type=cg.void)
-    return new_lambda_pvariable(action_id, lambda_, StatelessLambdaAction, template_arg)
+
+    if(local_prev_has_enabler == True):
+        cg.add(cg.RawStatement(f"if(disabler_disabler_id->exists(\"{cconf.disabler_tag}\"))"))
+        cg.add(cg.RawStatement("{"))
+
+    obj = new_lambda_pvariable(action_id, lambda_, StatelessLambdaAction, template_arg)
+
+    if(local_prev_has_enabler == True):
+        cg.add(cg.RawStatement("}"))
+
+
+    return obj
+
+
 
 
 @register_action(
@@ -673,7 +700,10 @@ async def build_automation(
     import esphome.config as cconf
    
     templ = cg.TemplateArguments(*arg_types)
+    
+    cg.add(cg.LineComment("init action ---------------start"))
     obj = cg.new_Pvariable(config[CONF_AUTOMATION_ID], templ, trigger)
+    cg.add(cg.LineComment("init action ---------------end"))
 
 
     if(cconf.prev_has_enabler == True):
@@ -691,7 +721,7 @@ async def build_automation(
 
     if(local_prev_has_enabler == True):
         cg.add(cg.LineComment("automation ---------------start"))
-        cg.add(cg.RawStatement(f"if(disabler_disabler_id->exists(\"{cconf.enabler_tag}\"))"))
+        cg.add(cg.RawStatement(f"if(disabler_disabler_id->exists(\"{cconf.disabler_tag}\"))"))
         cg.add(cg.RawStatement("{"))
  
 

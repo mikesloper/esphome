@@ -42,7 +42,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 prev_has_enabler = False
-enabler_tag = ""
+disabler_tag = ""
 
 def iter_components(config):
     for domain, conf in config.items():

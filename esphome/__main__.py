@@ -688,11 +688,11 @@ def _wrap_to_code(name, comp, yaml_util):
             cg.add(cg.LineComment("testtting ------------ end"))
             cg.add(cg.RawStatement("}"))
 
-        if "test" in conf:
+        if "disabler_tag" in conf:
             cg.add(cg.LineComment("testtting ---------------start"))
             cconf.prev_has_enabler = True
-            tag = conf["test"]
-            cconf.enabler_tag = tag
+            tag = conf["disabler_tag"]
+            cconf.disabler_tag = tag
             cg.add(cg.RawStatement(f"if(disabler_disabler_id->exists(\"{tag}\"))"))
             cg.add(cg.RawStatement("{"))
         else:
