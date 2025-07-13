@@ -64,5 +64,17 @@ async def to_code(config):
     await sensor.register_sensor(var, config)
 
     paren = await cg.get_variable(config[CONF_MODBUS_CONTROLLER_ID])
+    
+    if "disabler_tag" in config:
+        tag = config["disabler_tag"]
+        cg.add(cg.RawStatement(f"if(disabler_disabler_id->exists(\"{tag}\"))"))
+        cg.add(cg.RawStatement("{"))
+    
+    
     cg.add(paren.add_sensor_item(var))
+    
+    if "disabler_tag" in config:
+        cg.add(cg.RawStatement("}"))
+
+
     await add_modbus_base_properties(var, config, ModbusSensor)
