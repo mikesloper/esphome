@@ -14,7 +14,7 @@ from esphome.const import (
 )
 from esphome.core import CORE, ID, coroutine
 from esphome.coroutine import FakeAwaitable
-from esphome.cpp_generator import add, get_variable, RawStatement
+from esphome.cpp_generator import add, get_variable
 from esphome.cpp_types import App
 from esphome.helpers import sanitize, snake_case
 from esphome.types import ConfigFragmentType, ConfigType
@@ -54,19 +54,11 @@ async def register_component(var, config):
             f"Component ID {id_} was not declared to inherit from Component, or was registered twice. Please create a bug report with your configuration."
         )
     CORE.component_ids.remove(id_)
-
-    add(RawStatement(f'//--}}- IDDDDD:{id_}'))
-    
-    if "disabler_tag" in config:
-        tag = config["disabler_tag"]
-        add(RawStatement(f"if(disabler_disabler_id->exists(\"{tag}\")){{"))
-
     if CONF_SETUP_PRIORITY in config:
         add(var.set_setup_priority(config[CONF_SETUP_PRIORITY]))
     if CONF_UPDATE_INTERVAL in config:
         add(var.set_update_interval(config[CONF_UPDATE_INTERVAL]))
 
-    
     # Set component source by inspecting the stack and getting the callee module
     # https://stackoverflow.com/a/1095621
     name = None
@@ -93,10 +85,6 @@ async def register_component(var, config):
         add(var.set_component_source(name))
 
     add(App.register_component(var))
-
-    if "disabler_tag" in config:
-        add(RawStatement("}"))
-
     return var
 
 

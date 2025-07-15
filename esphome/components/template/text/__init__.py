@@ -71,10 +71,7 @@ async def to_code(config):
         max_length=config[CONF_MAX_LENGTH],
         pattern=config.get(CONF_PATTERN),
     )
-    
     await cg.register_component(var, config)
-
-    id_ = str(var.base)
 
     if CONF_LAMBDA in config:
         template_ = await cg.process_lambda(
@@ -83,10 +80,6 @@ async def to_code(config):
         cg.add(var.set_template(template_))
 
     else:
-
-        if "disabler_tag" in config:
-            cg.add(cg.RawStatement(f"if({id_}) {{"))
-            
         cg.add(var.set_optimistic(config[CONF_OPTIMISTIC]))
         if initial_value_config := config.get(CONF_INITIAL_VALUE):
             cg.add(var.set_initial_value(initial_value_config))
@@ -94,9 +87,6 @@ async def to_code(config):
             args = cg.TemplateArguments(config[CONF_MAX_LENGTH])
             saver = TextSaverTemplate.template(args).new()
             cg.add(var.set_value_saver(saver))
-        
-        if "disabler_tag" in config:
-            cg.add(cg.RawStatement("}"))
 
     if CONF_SET_ACTION in config:
         await automation.build_automation(
