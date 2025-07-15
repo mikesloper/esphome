@@ -147,7 +147,18 @@ async def characteristic_sensor_to_code(config):
 
     await cg.register_component(var, config)
     await ble_client.register_ble_node(var, config)
+    
+    if "disabler_tag" in config:
+        tag = config["disabler_tag"]
+        cg.add(cg.RawStatement(f"if(disabler_disabler_id->exists(\"{tag}\"))"))
+        cg.add(cg.RawStatement("{"))
+    
     cg.add(var.set_enable_notify(config[CONF_NOTIFY]))
+
+    if "disabler_tag" in config:
+        cg.add(cg.RawStatement("}"))
+    
+    
     for conf in config.get(CONF_ON_NOTIFY, []):
         trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
         await ble_client.register_ble_node(trigger, config)

@@ -67,8 +67,7 @@ async def to_code(config):
     
     if "disabler_tag" in config:
         tag = config["disabler_tag"]
-        cg.add(cg.RawStatement(f"if(disabler_disabler_id->exists(\"{tag}\"))"))
-        cg.add(cg.RawStatement("{"))
+        cg.add(cg.RawStatement(f"if(disabler_disabler_id->exists(\"{tag}\")) {{"))
     
     
     cg.add(paren.add_sensor_item(var))
