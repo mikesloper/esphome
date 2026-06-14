@@ -7,8 +7,7 @@
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/i2c/i2c.h"
 
-namespace esphome {
-namespace vl53l0x {
+namespace esphome::vl53l0x {
 
 struct SequenceStepEnables {
   bool tcc, msrc, dss, pre_range, final_range;
@@ -30,7 +29,6 @@ class VL53L0XSensor : public sensor::Sensor, public PollingComponent, public i2c
   void setup() override;
 
   void dump_config() override;
-  float get_setup_priority() const override { return setup_priority::DATA; }
   void update() override;
 
   void loop() override;
@@ -65,12 +63,10 @@ class VL53L0XSensor : public sensor::Sensor, public PollingComponent, public i2c
   bool waiting_for_interrupt_{false};
   uint8_t stop_variable_;
 
-  uint16_t timeout_start_us_;
-  uint16_t timeout_us_{};
+  uint32_t timeout_us_{};
 
   static std::list<VL53L0XSensor *> vl53_sensors;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
   static bool enable_pin_setup_complete;           // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 };
 
-}  // namespace vl53l0x
-}  // namespace esphome
+}  // namespace esphome::vl53l0x

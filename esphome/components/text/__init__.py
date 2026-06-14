@@ -13,9 +13,13 @@ from esphome.const import (
     CONF_VALUE,
     CONF_WEB_SERVER,
 )
-from esphome.core import CORE, coroutine_with_priority
+from esphome.core import CORE, CoroPriority, coroutine_with_priority
+from esphome.core.entity_helpers import (
+    entity_duplicate_validator,
+    queue_entity_register,
+    setup_entity,
+)
 from esphome.cpp_generator import MockObjClass
-from esphome.cpp_helpers import setup_entity
 
 CODEOWNERS = ["@mauritskorse"]
 IS_PLATFORM_COMPONENT = True
@@ -58,6 +62,9 @@ _TEXT_SCHEMA = (
 )
 
 
+_TEXT_SCHEMA.add_extra(entity_duplicate_validator("text"))
+
+
 def text_schema(
     class_: MockObjClass = cv.UNDEFINED,
     *,
@@ -81,11 +88,7 @@ def text_schema(
     return _TEXT_SCHEMA.extend(schema)
 
 
-# Remove before 2025.11.0
-TEXT_SCHEMA = text_schema()
-TEXT_SCHEMA.add_extra(cv.deprecated_schema_constant("text"))
-
-
+@setup_entity("text")
 async def setup_text_core_(
     var,
     config,
@@ -94,8 +97,6 @@ async def setup_text_core_(
     max_length: int | None,
     pattern: str | None,
 ):
-    await setup_entity(var, config)
-
     cg.add(var.traits.set_min_length(min_length))
     cg.add(var.traits.set_max_length(max_length))
     if pattern is not None:
@@ -125,7 +126,8 @@ async def register_text(
 ):
     if not CORE.has_id(config[CONF_ID]):
         var = cg.Pvariable(config[CONF_ID], var)
-    cg.add(cg.App.register_text(var))
+    queue_entity_register("text", config)
+    CORE.register_platform_component("text", var)
     await setup_text_core_(
         var, config, min_length=min_length, max_length=max_length, pattern=pattern
     )
@@ -145,9 +147,8 @@ async def new_text(
     return var
 
 
-@coroutine_with_priority(100.0)
+@coroutine_with_priority(CoroPriority.CORE)
 async def to_code(config):
-    cg.add_define("USE_TEXT")
     cg.add_global(text_ns.using)
 
 
@@ -166,6 +167,7 @@ OPERATION_BASE_SCHEMA = cv.Schema(
             cv.Required(CONF_VALUE): cv.templatable(cv.string_strict),
         }
     ),
+    synchronous=True,
 )
 async def text_set_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])

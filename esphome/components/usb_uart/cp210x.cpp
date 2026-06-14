@@ -1,12 +1,11 @@
-#if defined(USE_ESP32_VARIANT_ESP32S2) || defined(USE_ESP32_VARIANT_ESP32S3)
+#if defined(USE_ESP32_VARIANT_ESP32P4) || defined(USE_ESP32_VARIANT_ESP32S2) || defined(USE_ESP32_VARIANT_ESP32S3)
 #include "usb_uart.h"
 #include "usb/usb_host.h"
 #include "esphome/core/log.h"
 
 #include "esphome/components/bytebuffer/bytebuffer.h"
 
-namespace esphome {
-namespace usb_uart {
+namespace esphome::usb_uart {
 
 using namespace bytebuffer;
 /**
@@ -43,7 +42,7 @@ static constexpr uint8_t SET_BAUDRATE = 0x1E;     // Set the baud rate.
 static constexpr uint8_t SET_CHARS = 0x19;        // Set special characters.
 static constexpr uint8_t VENDOR_SPECIFIC = 0xFF;  // Vendor specific command.
 
-std::vector<CdcEps> USBUartTypeCP210X::parse_descriptors_(usb_device_handle_t dev_hdl) {
+std::vector<CdcEps> USBUartTypeCP210X::parse_descriptors(usb_device_handle_t dev_hdl) {
   const usb_config_desc_t *config_desc;
   const usb_device_desc_t *device_desc;
   int conf_offset = 0, ep_offset;
@@ -58,15 +57,15 @@ std::vector<CdcEps> USBUartTypeCP210X::parse_descriptors_(usb_device_handle_t de
     ESP_LOGE(TAG, "get_active_config_descriptor failed");
     return {};
   }
-  ESP_LOGD(TAG, "bDeviceClass: %u, bDeviceSubClass: %u", device_desc->bDeviceClass, device_desc->bDeviceSubClass);
-  ESP_LOGD(TAG, "bNumInterfaces: %u", config_desc->bNumInterfaces);
+  ESP_LOGD(TAG, "bDeviceClass: %u, bDeviceSubClass: %u, bNumInterfaces: %u", device_desc->bDeviceClass,
+           device_desc->bDeviceSubClass, config_desc->bNumInterfaces);
   if (device_desc->bDeviceClass != 0) {
     ESP_LOGE(TAG, "bDeviceClass != 0");
     return {};
   }
 
   for (uint8_t i = 0; i != config_desc->bNumInterfaces; i++) {
-    auto data_desc = usb_parse_interface_descriptor(config_desc, 0, 0, &conf_offset);
+    const auto *data_desc = usb_parse_interface_descriptor(config_desc, i, 0, &conf_offset);
     if (!data_desc) {
       ESP_LOGE(TAG, "data_desc: usb_parse_interface_descriptor failed");
       break;
@@ -77,13 +76,13 @@ std::vector<CdcEps> USBUartTypeCP210X::parse_descriptors_(usb_device_handle_t de
       continue;
     }
     ep_offset = conf_offset;
-    auto out_ep = usb_parse_endpoint_descriptor_by_index(data_desc, 0, config_desc->wTotalLength, &ep_offset);
+    const auto *out_ep = usb_parse_endpoint_descriptor_by_index(data_desc, 0, config_desc->wTotalLength, &ep_offset);
     if (!out_ep) {
       ESP_LOGE(TAG, "out_ep: usb_parse_endpoint_descriptor_by_index failed");
       continue;
     }
     ep_offset = conf_offset;
-    auto in_ep = usb_parse_endpoint_descriptor_by_index(data_desc, 1, config_desc->wTotalLength, &ep_offset);
+    const auto *in_ep = usb_parse_endpoint_descriptor_by_index(data_desc, 1, config_desc->wTotalLength, &ep_offset);
     if (!in_ep) {
       ESP_LOGE(TAG, "in_ep: usb_parse_endpoint_descriptor_by_index failed");
       continue;
@@ -99,13 +98,13 @@ std::vector<CdcEps> USBUartTypeCP210X::parse_descriptors_(usb_device_handle_t de
 
 void USBUartTypeCP210X::enable_channels() {
   // enable the channels
-  for (auto channel : this->channels_) {
-    if (!channel->initialised_)
+  for (auto *channel : this->channels_) {
+    if (!channel->initialised_.load())
       continue;
     usb_host::transfer_cb_t callback = [=](const usb_host::TransferStatus &status) {
       if (!status.success) {
         ESP_LOGE(TAG, "Control transfer failed, status=%s", esp_err_to_name(status.error_code));
-        channel->initialised_ = false;
+        channel->initialised_.store(false);
       }
     };
     this->control_transfer(USB_VENDOR_IFC | usb_host::USB_DIR_OUT, IFC_ENABLE, 1, channel->index_, callback);
@@ -119,8 +118,8 @@ void USBUartTypeCP210X::enable_channels() {
     this->control_transfer(USB_VENDOR_IFC | usb_host::USB_DIR_OUT, SET_BAUDRATE, 0, channel->index_, callback,
                            baud.get_data());
   }
-  USBUartTypeCdcAcm::enable_channels();
+  this->start_channels_();
 }
-}  // namespace usb_uart
-}  // namespace esphome
-#endif  // USE_ESP32_VARIANT_ESP32S2 || USE_ESP32_VARIANT_ESP32S3
+}  // namespace esphome::usb_uart
+
+#endif  // USE_ESP32_VARIANT_ESP32P4 || USE_ESP32_VARIANT_ESP32S2 || USE_ESP32_VARIANT_ESP32S3
