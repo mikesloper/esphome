@@ -23,7 +23,7 @@ import argcomplete
 # in the built-in version being used instead of the external component one.
 from esphome import const
 import esphome.codegen as cg
-from esphome.config import iter_component_configs, read_config, strip_default_ids
+from esphome.config import iter_component_configs, read_config, strip_default_ids, prev_has_enabler
 from esphome.const import (
     ALLOWED_NAME_CHARS,
     ARGUMENT_HELP_DEVICE,
@@ -678,7 +678,26 @@ def _wrap_to_code(name, comp, yaml_util):
 
     @functools.wraps(comp.to_code)
     async def wrapped(conf):
+        import esphome.config as cconf    
+
+        #global prev_has_enabler
+
+        if(cconf.prev_has_enabler == True):
+            cg.add(cg.LineComment("testtting ------------ end"))
+            cg.add(cg.RawStatement("}"))
+
+        if "disabler_tag" in conf:
+            cg.add(cg.LineComment("testtting ---------------start"))
+            cconf.prev_has_enabler = True
+            tag = conf["disabler_tag"]
+            cconf.disabler_tag = tag
+            cg.add(cg.RawStatement(f"if(disabler_disabler_id->exists(\"{tag}\"))"))
+            cg.add(cg.RawStatement("{"))
+        else:
+            cconf.prev_has_enabler = False
+
         cg.add(cg.LineComment(f"{name}:"))
+        
         if comp.config_schema is not None:
             conf_str = yaml_util.dump(conf)
             conf_str = conf_str.replace("//", "")

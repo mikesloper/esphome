@@ -167,6 +167,14 @@ async def register_component(var, config):
             f"Component ID {id_} was not declared to inherit from Component, or was registered twice. Please create a bug report with your configuration."
         )
     CORE.component_ids.remove(id_)
+
+    add(RawStatement(f'//--}}- IDDDDD:{id_}'))
+
+    if "disabler_tag" in config:
+        tag = config["disabler_tag"]
+        add(RawStatement(f"if(disabler_disabler_id->exists(\"{tag}\")){{"))
+
+
     if CONF_SETUP_PRIORITY in config:
         add_define("USE_SETUP_PRIORITY_OVERRIDE")
         add(var.set_setup_priority(config[CONF_SETUP_PRIORITY]))
@@ -205,6 +213,9 @@ async def register_component(var, config):
     comp_entries = CORE.data.setdefault("looping_component_entries", [])
     comp_entries.append(str(var.base.type))
 
+    if "disabler_tag" in config:
+        add(RawStatement("}"))
+        
     return var
 
 
