@@ -207,7 +207,7 @@ async def register_component(var, config):
     comp_entries = CORE.data.setdefault("looping_component_entries", [])
     comp_entries.append(str(var.base.type))
 
-    add(App.register_component(var))
+    #add(App.register_component(var))
 
     if "disabler_tag" in config:
         add(RawStatement("}"))

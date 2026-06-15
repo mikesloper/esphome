@@ -532,7 +532,7 @@ async def lambda_action_to_code(
     template_arg: cg.TemplateArguments,
     args: TemplateArgsType,
 ) -> MockObj:
-
+    
     import esphome.config as cconf
     
     if(cconf.prev_has_enabler == True):
@@ -543,7 +543,6 @@ async def lambda_action_to_code(
         local_prev_has_enabler = False
     
     #pprint.pprint(args)
-
 
     lambda_ = await cg.process_lambda(config, args, return_type=cg.void)
 
@@ -556,10 +555,7 @@ async def lambda_action_to_code(
     if(local_prev_has_enabler == True):
         cg.add(cg.RawStatement("}"))
 
-
     return obj
-
-
 
 
 @register_action(
