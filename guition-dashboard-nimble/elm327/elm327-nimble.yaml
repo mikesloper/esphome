@@ -1,0 +1,105 @@
+
+esphome:
+  on_boot:
+    - priority: 700
+      then:
+        - lambda: |-
+            id(odbii_rpm).publish_state(0);
+            id(odbii_coolant_temp).publish_state(0);
+            id(odbii_kph).publish_state(0);
+
+  includes:
+    - lib/elm327.h
+
+nimble_host:
+  id: nimble_bt
+
+nimble_elm327:
+  id: lelink_nimble
+  nimble_host_id: nimble_bt
+  mac_address: 8F:C3:D2:5A:00:91
+  service_uuid: "fff0"
+  notify_uuid: "fff1"
+  write_uuid: "fff2"
+  passkey: 1234
+  auto_connect: true
+  rpm_sensor: odbii_rpm
+  kph_sensor: odbii_kph
+  coolant_temp_sensor: odbii_coolant_temp
+  device_voltage_sensor: odbii_device_voltage
+  uptime_sensor: uptime_minutes
+
+sensor:
+  - platform: template
+    name: "Mono ODBII RPM"
+    id: odbii_rpm
+
+  - platform: template
+    name: "Mono ODBII KPH"
+    id: odbii_kph
+
+  - platform: template
+    name: "Mono ODBII Coolant Temperature"
+    id: odbii_coolant_temp
+    device_class: "temperature"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Mono ODBII Device Voltage"
+    id: odbii_device_voltage
+    device_class: "voltage"
+    unit_of_measurement: "V"
+    accuracy_decimals: 1
+
+interval:
+  - interval: 60s
+    then:
+      - lambda: |-
+          int uptime = 0;
+          for (auto i : elm327_pid_status) {
+            ESP_LOGD("main", "Uptime PID %d: %d", i.first, i.second);
+            uptime = round(id(uptime_minutes).get_raw_state());
+            if (uptime - i.second > 60 && i.second > 60) {
+              switch (i.first) {
+                case 12:
+                  id(odbii_rpm).publish_state(0);
+                case 13:
+                  id(odbii_coolant_temp).publish_state(0);
+                case 5:
+                  id(odbii_kph).publish_state(0);
+              }
+            }
+          }
+
+      - nimble_elm327.write:
+          id: lelink_nimble
+          value: [0x41, 0x54, 0x5A, 0x0D, 0x0A]
+
+      - nimble_elm327.write:
+          id: lelink_nimble
+          value: [0x41, 0x54, 0x45, 0x31, 0x0D, 0x0A]
+
+  - interval: 10s
+    then:
+      - nimble_elm327.write:
+          id: lelink_nimble
+          value: [0x30, 0x31, 0x30, 0x43, 0x0D, 0x0A]
+
+  - interval: 11s
+    then:
+      - nimble_elm327.write:
+          id: lelink_nimble
+          value: [0x30, 0x31, 0x30, 0x44, 0x0D, 0x0A]
+
+  - interval: 20s
+    then:
+      - nimble_elm327.write:
+          id: lelink_nimble
+          value: [0x30, 0x31, 0x30, 0x35, 0x0D, 0x0A]
+
+  - interval: 14s
+    then:
+      - nimble_elm327.write:
+          id: lelink_nimble
+          value: [0x41, 0x54, 0x52, 0x56, 0x0D, 0x0A]

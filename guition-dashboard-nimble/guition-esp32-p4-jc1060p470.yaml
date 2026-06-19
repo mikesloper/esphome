@@ -8,11 +8,7 @@ substitutions:
   screen_height: 600
   screen_width: 1024
 
-esphome:
-  min_version: 2026.3.0
-  project:
-    name: "Guition.ESP32-P4-JC1060P470"
-    version: "1.0"
+
 
 esp32:
   board: esp32-p4-evboard

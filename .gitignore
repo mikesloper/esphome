@@ -149,3 +149,4 @@ sdkconfig.*
 /dependencies.lock
 
 api-docs/
+guition-dashboard-nimble/secrets.yaml

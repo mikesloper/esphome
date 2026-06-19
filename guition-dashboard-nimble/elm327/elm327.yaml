@@ -1,5 +1,13 @@
 
 esphome:
+  on_boot:
+    - priority: 700
+      then:
+        - lambda: |-
+            id(odbii_rpm).publish_state(0);
+            id(odbii_coolant_temp).publish_state(0);
+            id(odbii_kph).publish_state(0);
+
   includes: 
     - lib/elm327.h
 
@@ -59,7 +67,6 @@ ble_client:
 sensor:
 
 
-
   - platform: ble_client
     ble_client_id: lelink
     internal: true
@@ -81,34 +88,12 @@ sensor:
   - platform: template
     name: "Mono ODBII RPM"
     id: odbii_rpm
-    on_value:
-      then:
-        - lvgl.label.update:
-            id: lbl_obd_rpm
-            text: !lambda |-
-              if (isnan(x)) return std::string("--");
-              return str_sprintf("%.0f", x);
-        - lvgl.arc.update:
-            id: arc_obd_rpm
-            value: !lambda |-
-              if (isnan(x)) return 0;
-              return (int) x;
+
 
   - platform: template
     name: "Mono ODBII KPH"
     id: odbii_kph
-    on_value:
-      then:
-        - lvgl.label.update:
-            id: lbl_obd_kph
-            text: !lambda |-
-              if (isnan(x)) return std::string("--");
-              return str_sprintf("%.0f", x);
-        - lvgl.arc.update:
-            id: arc_obd_speed
-            value: !lambda |-
-              if (isnan(x)) return 0;
-              return (int) x;
+
 
   - platform: template
     name: "Mono ODBII Coolant Temperature"
@@ -116,18 +101,7 @@ sensor:
     device_class: "temperature"
     unit_of_measurement: "°C"
     accuracy_decimals: 1
-    on_value:
-      then:
-        - lvgl.label.update:
-            id: lbl_obd_coolant
-            text: !lambda |-
-              if (isnan(x)) return std::string("--°C");
-              return str_sprintf("%.0f°C", x);
-        - lvgl.bar.update:
-            id: bar_obd_coolant
-            value: !lambda |-
-              if (isnan(x)) return 0;
-              return (int) x;
+
 
   - platform: template
     name: "Mono ODBII Device Voltage"
@@ -135,18 +109,6 @@ sensor:
     device_class: "voltage"
     unit_of_measurement: "V"
     accuracy_decimals: 1
-    on_value:
-      then:
-        - lvgl.label.update:
-            id: lbl_obd_starter_v
-            text: !lambda |-
-              if (isnan(x)) return std::string("--V");
-              return str_sprintf("%.1fV", x);
-        - lvgl.bar.update:
-            id: bar_obd_starter_v
-            value: !lambda |-
-              if (isnan(x)) return 10;
-              return (int) x;
 
 
 

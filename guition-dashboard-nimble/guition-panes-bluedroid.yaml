@@ -1,16 +1,10 @@
 ---
-# NimBLE custom-component build — no ESPHome esp32_ble / ble_client.
-# Build with: esphome compile guition-panes.yaml
-# Bluedroid baseline: guition-panes-bluedroid.yaml
+# Bluedroid baseline for memory comparison — uses ESPHome esp32_ble stack.
+# Build with: esphome compile guition-panes-bluedroid.yaml
 
 esphome:
   name: "nimble"
   min_version: 2026.3.0
-
-external_components:
-  - source:
-      type: local
-      path: components
 
 disabler:
 
@@ -26,10 +20,19 @@ esp32:
       execute_from_psram: true
       loop_task_stack_size: 16384
 
+esp32_ble:
+  max_connections: 3
+  max_notifications: 48
+  enable_on_boot: false
+  use_psram: true
+
+esp32_ble_tracker:
+  id: ble_tracker
+
 packages:
-  wifi: !include wifi-nimble.yaml
+  wifi: !include wifi-bluedroid.yaml
   hardware: !include guition-esp32-p4-jc1060p470.yaml
-  elm327: !include elm327/elm327-nimble.yaml
+  elm327: !include elm327/elm327-bluedroid.yaml
 
 debug:
   update_interval: 10s

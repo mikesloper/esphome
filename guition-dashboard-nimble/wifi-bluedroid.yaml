@@ -8,5 +8,6 @@ wifi:
   on_connect:
     then:
       - delay: 8s
+      - ble.enable:
   ap:
     password: "password"

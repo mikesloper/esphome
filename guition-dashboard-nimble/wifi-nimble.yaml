@@ -8,5 +8,7 @@ wifi:
   on_connect:
     then:
       - delay: 8s
+      - nimble_host.enable:
+          id: nimble_bt
   ap:
     password: "password"
