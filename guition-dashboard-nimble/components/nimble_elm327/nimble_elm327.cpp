@@ -1,6 +1,5 @@
 #include "nimble_elm327.h"
 #include "elm327_parser.h"
-#include "esphome/components/disabler/disabler.h"
 #include "esphome/components/nimble_host/nimble_host.h"
 #include "esphome/core/application.h"
 #include "esphome/core/log.h"
@@ -57,28 +56,6 @@ bool NimbleElm327::parse_uuid_(const std::string &uuid_str, void *out_uuid) cons
 // Run before nimble_host (BUS) so on_sync callbacks are registered before the stack syncs.
 float NimbleElm327::get_setup_priority() const { return setup_priority::BUS + 1.0f; }
 
-bool NimbleElm327::is_enabled() const {
-  if (this->disabler_ == nullptr || this->disabler_tag_ == nullptr || this->disabler_tag_[0] == '\0') {
-    return true;
-  }
-  return this->disabler_->exists(this->disabler_tag_);
-}
-
-void NimbleElm327::stop_activity_() {
-  if (this->is_scanning()) {
-    ble_gap_disc_cancel();
-    this->set_scanning(false);
-  }
-  if (this->conn_handle_ != 0xFFFF) {
-    ble_gap_terminate(this->conn_handle_, BLE_ERR_REM_USER_CONN_TERM);
-    this->conn_handle_ = 0xFFFF;
-    this->write_handle_ = 0;
-    this->notify_val_handle_ = 0;
-  }
-  this->connect_attempted_ = false;
-  this->reconnect_at_ms_ = 0;
-}
-
 void NimbleElm327::setup() {
   g_elm327 = this;
   if (this->host_ == nullptr) {
@@ -91,7 +68,7 @@ void NimbleElm327::setup() {
                             this->uptime_sensor_);
 
   this->host_->add_on_sync_callback([this]() {
-    if (this->auto_connect_ && this->host_->is_active() && this->is_enabled()) {
+    if (this->auto_connect_ && this->host_->is_active()) {
       this->start_connect();
     }
   });
@@ -100,27 +77,6 @@ void NimbleElm327::setup() {
 void NimbleElm327::loop() {
   if (!this->host_->is_active() || !this->host_->is_synced())
     return;
-
-  const bool enabled = this->is_enabled();
-  if (!enabled) {
-    if (this->was_enabled_) {
-      ESP_LOGI(TAG, "Disabled via disabler, stopping BLE activity");
-      this->stop_activity_();
-    }
-    this->was_enabled_ = false;
-    return;
-  }
-
-  if (!this->was_enabled_) {
-    ESP_LOGI(TAG, "Re-enabled via disabler, resuming connection");
-    this->was_enabled_ = true;
-    this->connect_attempted_ = false;
-    this->reconnect_at_ms_ = 0;
-    if (this->auto_connect_) {
-      this->start_connect();
-      return;
-    }
-  }
 
   if (this->reconnect_at_ms_ != 0 && millis() >= this->reconnect_at_ms_) {
     this->reconnect_at_ms_ = 0;
@@ -145,9 +101,6 @@ void NimbleElm327::dump_config() {
   ESP_LOGCONFIG(TAG, "NimBLE ELM327:");
   ESP_LOGCONFIG(TAG, "  MAC: %s", mac_buf);
   ESP_LOGCONFIG(TAG, "  Connected: %s", YESNO(this->is_connected()));
-  if (this->disabler_tag_ != nullptr && this->disabler_tag_[0] != '\0') {
-    ESP_LOGCONFIG(TAG, "  Disabler tag: %s (enabled: %s)", this->disabler_tag_, YESNO(this->is_enabled()));
-  }
 }
 
 
@@ -243,10 +196,6 @@ static int gap_event(struct ble_gap_event *event, void *arg) {
         return 0;
       }
 
-      if (!self->is_enabled()) {
-        return 0;
-      }
-
       ESP_LOGI(TAG, "Found ELM327 in scan, connecting...");
 
       int rc = ble_gap_disc_cancel();
@@ -282,9 +231,7 @@ static int gap_event(struct ble_gap_event *event, void *arg) {
         ESP_LOGW(TAG, "Scan finished, saw %u BLE advertisers, ELM327 not found (reason=%d)",
                  self->get_scan_adv_count(), event->disc_complete.reason);
         self->reset_scan_adv_count();
-        if (self->is_enabled()) {
-          self->schedule_reconnect();
-        }
+        self->schedule_reconnect();
       }
       return 0;
 
@@ -296,9 +243,7 @@ static int gap_event(struct ble_gap_event *event, void *arg) {
       } else {
         const char *reason = event->connect.status == BLE_HS_ETIMEOUT ? "timeout" : "error";
         ESP_LOGW(TAG, "Connection failed, status=%d (%s)", event->connect.status, reason);
-        if (self->is_enabled()) {
-          self->schedule_reconnect();
-        }
+        self->schedule_reconnect();
       }
       return 0;
 
@@ -307,9 +252,7 @@ static int gap_event(struct ble_gap_event *event, void *arg) {
       self->conn_handle_ = 0xFFFF;
       self->write_handle_ = 0;
       self->notify_val_handle_ = 0;
-      if (self->is_enabled()) {
-        self->schedule_reconnect();
-      }
+      self->schedule_reconnect();
       return 0;
 
     case BLE_GAP_EVENT_NOTIFY_RX:
@@ -350,8 +293,6 @@ void NimbleElm327::enable_notifications() {
 }
 
 void NimbleElm327::start_connect() {
-  if (!this->is_enabled())
-    return;
   if (!this->host_->is_active() || !this->host_->is_synced())
     return;
   if (this->conn_handle_ != 0xFFFF)
@@ -392,8 +333,6 @@ void NimbleElm327::start_connect() {
 }
 
 void NimbleElm327::schedule_reconnect() {
-  if (!this->is_enabled())
-    return;
   if (this->is_scanning()) {
     ble_gap_disc_cancel();
     this->set_scanning(false);
@@ -403,10 +342,6 @@ void NimbleElm327::schedule_reconnect() {
 }
 
 void NimbleElm327::write(const uint8_t *data, size_t len) {
-  if (!this->is_enabled()) {
-    ESP_LOGD(TAG, "Write skipped, device disabled");
-    return;
-  }
   if (this->conn_handle_ == 0xFFFF || this->write_handle_ == 0) {
     ESP_LOGD(TAG, "Cannot write, not connected");
     return;
@@ -418,8 +353,6 @@ void NimbleElm327::write(const uint8_t *data, size_t len) {
 }
 
 void NimbleElm327::on_notify_data(const uint8_t *data, size_t len) {
-  if (!this->is_enabled())
-    return;
   std::string payload(reinterpret_cast<const char *>(data), len);
   handle_eml_reponse(payload);
 }

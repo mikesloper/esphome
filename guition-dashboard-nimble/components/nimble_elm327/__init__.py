@@ -1,6 +1,6 @@
 import esphome.codegen as cg
 from esphome import automation
-from esphome.components import disabler, sensor
+from esphome.components import sensor
 import esphome.config_validation as cv
 from esphome.const import CONF_ID, CONF_MAC_ADDRESS
 from esphome.core import ID
@@ -11,7 +11,6 @@ CONF_NOTIFY_UUID = "notify_uuid"
 CONF_WRITE_UUID = "write_uuid"
 CONF_PASSKEY = "passkey"
 CONF_AUTO_CONNECT = "auto_connect"
-CONF_DISABLER_ID = "disabler_id"
 CONF_DISABLER_TAG = "disabler_tag"
 CONF_RPM_SENSOR_ID = "rpm_sensor"
 CONF_KPH_SENSOR_ID = "kph_sensor"
@@ -39,7 +38,6 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_PASSKEY, default=0): cv.int_,
         cv.Optional(CONF_AUTO_CONNECT, default=True): cv.boolean,
         cv.Optional(CONF_DISABLER_TAG): cv.string,
-        cv.Optional(CONF_DISABLER_ID): cv.use_id(disabler.Disabler),
         cv.Optional(CONF_RPM_SENSOR_ID): cv.use_id(sensor.Sensor),
         cv.Optional(CONF_KPH_SENSOR_ID): cv.use_id(sensor.Sensor),
         cv.Optional(CONF_COOLANT_SENSOR_ID): cv.use_id(sensor.Sensor),
@@ -72,7 +70,13 @@ async def write_to_code(config, action_id, template_arg, args):
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
-    await cg.register_component(var, config)
+
+    disabler_wrap = CONF_DISABLER_TAG in config
+    reg_comp_config = config
+    if disabler_wrap:
+        tag = config[CONF_DISABLER_TAG]
+        cg.add(cg.RawStatement(f'if(disabler_disabler_id->exists("{tag}")) {{'))
+        reg_comp_config = {k: v for k, v in config.items() if k != CONF_DISABLER_TAG}
 
     host = await cg.get_variable(config[CONF_NIMBLE_HOST_ID])
     cg.add(var.set_nimble_host(host))
@@ -82,14 +86,6 @@ async def to_code(config):
     cg.add(var.set_write_uuid(config[CONF_WRITE_UUID]))
     cg.add(var.set_passkey(config[CONF_PASSKEY]))
     cg.add(var.set_auto_connect(config[CONF_AUTO_CONNECT]))
-
-    if CONF_DISABLER_TAG in config:
-        if CONF_DISABLER_ID in config:
-            disabler_var = await cg.get_variable(config[CONF_DISABLER_ID])
-        else:
-            disabler_var = cg.RawExpression("disabler_disabler_id")
-        cg.add(var.set_disabler(disabler_var))
-        cg.add(var.set_disabler_tag(config[CONF_DISABLER_TAG]))
 
     for conf_key, setter in (
         (CONF_RPM_SENSOR_ID, "set_rpm_sensor"),
@@ -101,3 +97,8 @@ async def to_code(config):
         if conf_key in config:
             sens = await cg.get_variable(config[conf_key])
             cg.add(getattr(var, setter)(sens))
+
+    await cg.register_component(var, reg_comp_config)
+
+    if disabler_wrap:
+        cg.add(cg.RawStatement("}"))

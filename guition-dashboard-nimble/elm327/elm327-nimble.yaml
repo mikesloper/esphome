@@ -11,6 +11,9 @@ esphome:
             id(odbii_rpm).publish_state(0);
             id(odbii_coolant_temp).publish_state(0);
             id(odbii_kph).publish_state(0);
+    - priority: 600
+      then:
+        - lambda: 'disabler_disabler_id->save_odbii1("odbii_elm327");'
 
   includes:
     - lib/elm327.h

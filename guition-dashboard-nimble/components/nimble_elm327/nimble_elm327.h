@@ -10,10 +10,6 @@ namespace esphome::sensor {
 class Sensor;
 }
 
-namespace esphome::disabler {
-class Disabler;
-}
-
 namespace esphome::nimble_host {
 class NimbleHost;
 }
@@ -39,10 +35,7 @@ class NimbleElm327 : public Component {
   void set_coolant_sensor(sensor::Sensor *s) { this->coolant_sensor_ = s; }
   void set_voltage_sensor(sensor::Sensor *s) { this->voltage_sensor_ = s; }
   void set_uptime_sensor(sensor::Sensor *s) { this->uptime_sensor_ = s; }
-  void set_disabler(disabler::Disabler *disabler) { this->disabler_ = disabler; }
-  void set_disabler_tag(const char *tag) { this->disabler_tag_ = tag; }
 
-  bool is_enabled() const;
   bool is_connected() const { return this->conn_handle_ != 0xFFFF; }
   uint64_t get_address() const { return this->address_; }
   uint8_t get_own_addr_type() const { return this->own_addr_type_; }
@@ -57,7 +50,6 @@ class NimbleElm327 : public Component {
   void schedule_reconnect();
   void enable_notifications();
   bool parse_uuid_(const std::string &uuid_str, void *out_uuid) const;
-  void stop_activity_();
 
   std::string service_uuid_;
   std::string notify_uuid_;
@@ -70,9 +62,6 @@ class NimbleElm327 : public Component {
 
  protected:
   nimble_host::NimbleHost *host_{nullptr};
-  disabler::Disabler *disabler_{nullptr};
-  const char *disabler_tag_{nullptr};
-  bool was_enabled_{true};
   sensor::Sensor *rpm_sensor_{nullptr};
   sensor::Sensor *kph_sensor_{nullptr};
   sensor::Sensor *coolant_sensor_{nullptr};
@@ -96,11 +85,7 @@ class NimbleElm327WriteAction : public Parented<NimbleElm327>, public Action<Ts.
     this->len_ = len;
   }
 
-  void play(const Ts &...x) override {
-    if (!this->parent_->is_enabled())
-      return;
-    this->parent_->write(this->data_, this->len_);
-  }
+  void play(const Ts &...x) override { this->parent_->write(this->data_, this->len_); }
 
  protected:
   const uint8_t *data_{nullptr};
