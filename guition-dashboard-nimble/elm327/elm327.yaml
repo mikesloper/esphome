@@ -1,0 +1,230 @@
+
+esphome:
+  includes: 
+    - lib/elm327.h
+
+ble_client:
+  - mac_address: 8F:C3:D2:5A:00:91
+      #randon mac
+    id: lelink
+    name: LELink Leafspy
+    auto_connect: true 
+    on_connect:
+      then:
+        - lambda: |-
+            ESP_LOGI("ble_client on_connect", "Connected to lelink");
+            init_elm327_pid_status();
+         
+    on_disconnect:
+      then:
+        - lambda: |-
+            ESP_LOGI("ble_client_lambda", "Disconnected from lelink");
+    on_passkey_request:
+      then:
+        - ble_client.passkey_reply:
+            id: lelink
+            passkey: 1234
+        - lambda: |-
+            ESP_LOGI("ble_client_lambda", "passkey request from lelink");
+
+# text:
+#   - platform: template
+#     name: "Mono Elm327 Mac Address"
+#     setup_priority: -100
+#     id: odbii_mac
+#     optimistic: true
+#     min_length: 0
+#     max_length: 32
+#     mode: text
+#     restore_value: true
+#     on_value:
+#       then:
+#         - lambda: | 
+#             esphome::ble_client::BLEClient *blec = id(lelink);
+
+#             std::string mac_str = id(odbii_mac)->state.c_str();
+
+#             const char *mac_char = mac_str.c_str();
+
+#             if(isValidMacAddress(mac_char)){
+
+#               uint64_t mac = string_to_mac(mac_str);
+#               //blec->set_address(0x6CB2FD868245ULL);
+#               blec->set_address(mac);
+#               blec->disconnect();
+#               blec->connect();
+#             }
+
+
+sensor:
+
+
+
+  - platform: ble_client
+    ble_client_id: lelink
+    internal: true
+    update_interval: never
+    notify: true
+    type: characteristic
+    name: "lelink response"
+    id: lelink_response_text
+    service_uuid: "0000fff0-0000-1000-8000-00805f9b34fb"
+    characteristic_uuid: "FFF1"
+
+    lambda: |-
+
+
+        handle_eml_reponse(x);
+        return 0.0;
+
+
+  - platform: template
+    name: "Mono ODBII RPM"
+    id: odbii_rpm
+    on_value:
+      then:
+        - lvgl.label.update:
+            id: lbl_obd_rpm
+            text: !lambda |-
+              if (isnan(x)) return std::string("--");
+              return str_sprintf("%.0f", x);
+        - lvgl.arc.update:
+            id: arc_obd_rpm
+            value: !lambda |-
+              if (isnan(x)) return 0;
+              return (int) x;
+
+  - platform: template
+    name: "Mono ODBII KPH"
+    id: odbii_kph
+    on_value:
+      then:
+        - lvgl.label.update:
+            id: lbl_obd_kph
+            text: !lambda |-
+              if (isnan(x)) return std::string("--");
+              return str_sprintf("%.0f", x);
+        - lvgl.arc.update:
+            id: arc_obd_speed
+            value: !lambda |-
+              if (isnan(x)) return 0;
+              return (int) x;
+
+  - platform: template
+    name: "Mono ODBII Coolant Temperature"
+    id: odbii_coolant_temp
+    device_class: "temperature"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    on_value:
+      then:
+        - lvgl.label.update:
+            id: lbl_obd_coolant
+            text: !lambda |-
+              if (isnan(x)) return std::string("--°C");
+              return str_sprintf("%.0f°C", x);
+        - lvgl.bar.update:
+            id: bar_obd_coolant
+            value: !lambda |-
+              if (isnan(x)) return 0;
+              return (int) x;
+
+  - platform: template
+    name: "Mono ODBII Device Voltage"
+    id: odbii_device_voltage
+    device_class: "voltage"
+    unit_of_measurement: "V"
+    accuracy_decimals: 1
+    on_value:
+      then:
+        - lvgl.label.update:
+            id: lbl_obd_starter_v
+            text: !lambda |-
+              if (isnan(x)) return std::string("--V");
+              return str_sprintf("%.1fV", x);
+        - lvgl.bar.update:
+            id: bar_obd_starter_v
+            value: !lambda |-
+              if (isnan(x)) return 10;
+              return (int) x;
+
+
+
+interval:
+  - interval: 60s 
+    then:
+      - lambda: | 
+          
+          int uptime = 0;
+          
+          for (auto i : elm327_pid_status) {
+              ESP_LOGD("main", "Uptime PID %d: %d", i.first, i.second);
+            
+              uptime = round(id(uptime_minutes).raw_state); //raw is seconds
+              
+              if(uptime - i.second > 60 && i.second > 60) {   //has there been no data for 30s and have we ever received data before
+
+                switch(i.first) {
+                  case 12:
+                    //id(odbii_rpm).publish_state(NAN);
+                    id(odbii_rpm).publish_state(0);
+                  case 13:
+                    id(odbii_coolant_temp).publish_state(0);
+                  case 5:
+                    id(odbii_kph).publish_state(0);
+                }
+              }
+          }
+
+      - ble_client.ble_write:
+            id: lelink
+            service_uuid: 0000fff0-0000-1000-8000-00805f9b34fb
+            characteristic_uuid: FFF2
+            value:  [0x41, 0x54, 0x5A,           0x0D, 0x0A, # ATZ\r\n
+                    ]
+
+      - ble_client.ble_write:
+            id: lelink
+            service_uuid: 0000fff0-0000-1000-8000-00805f9b34fb
+            characteristic_uuid: FFF2
+            value: [0x41, 0x54, 0x45, 0x31,     0x0D, 0x0A, # ATE1\r\n ATE0 to turn echo off
+                     ]
+
+
+  - interval: 10s 
+    then:
+
+      - ble_client.ble_write:
+            id: lelink
+            service_uuid: 0000fff0-0000-1000-8000-00805f9b34fb
+            characteristic_uuid: FFF2
+            value: [0x30, 0x31, 0x30, 0x43,      0x0D, 0x0A, # 010C --rpm
+                     ]
+
+  - interval: 11s 
+    then:
+      - ble_client.ble_write:
+            id: lelink
+            service_uuid: 0000fff0-0000-1000-8000-00805f9b34fb
+            characteristic_uuid: FFF2
+            value: [0x30, 0x31, 0x30, 0x44,      0x0D, 0x0A, # 010D --speed
+                     ]
+
+  - interval: 20s 
+    then:
+      - ble_client.ble_write:
+            id: lelink
+            service_uuid: 0000fff0-0000-1000-8000-00805f9b34fb
+            characteristic_uuid: FFF2
+            value: [0x30, 0x31, 0x30, 0x35,      0x0D, 0x0A, # 0105 --coolant
+                     ]
+
+
+  - interval: 14s 
+    then:
+      - ble_client.ble_write:
+            id: lelink
+            service_uuid: 0000fff0-0000-1000-8000-00805f9b34fb
+            characteristic_uuid: FFF2
+            value: [0x41, 0x54, 0x52, 0x56,      0x0D, 0x0A, # ATRV --device voltage
+                     ]

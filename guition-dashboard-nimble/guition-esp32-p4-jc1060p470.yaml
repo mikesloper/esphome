@@ -1,0 +1,168 @@
+# Guition-ESP32-P4-JC1060P470 7" Capacitive touch
+#
+# Hardware configuration file
+---
+
+substitutions:
+  # Screen Size
+  screen_height: 600
+  screen_width: 1024
+
+esphome:
+  min_version: 2026.3.0
+  project:
+    name: "Guition.ESP32-P4-JC1060P470"
+    version: "1.0"
+
+esp32:
+  board: esp32-p4-evboard
+  variant: esp32p4
+  flash_size: 16MB
+  cpu_frequency: 360MHz
+  engineering_sample: true
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
+#      CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL: "65536"
+      CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL: "512"
+      CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL: "32768"
+      CONFIG_SPIRAM_USE_MALLOC: "y"
+      CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: "y"
+      CONFIG_BT_BLE_DYNAMIC_ENV_MEMORY: "y"
+      # Optional — keep only if testing proves stable:
+      CONFIG_SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY: "y"
+      CONFIG_SPIRAM_ALLOW_NOINIT_SEG_EXTERNAL_MEMORY: "y"
+      # Remove on P4:
+      # CONFIG_BTDM_CTRL_MODE_BLE_ONLY
+      # CONFIG_BT_ALLOCATION_FROM_SPIRAM_FIRST
+      # CONFIG_SPIRAM_FETCH_INSTRUCTIONS
+      # CONFIG_SPIRAM_RODATA
+    advanced:
+      enable_idf_experimental_features: true
+      execute_from_psram: true
+
+esp_ldo:
+  - channel: 3
+    id: dsi_phy_enable
+    voltage: 2.5V
+    adjustable: true
+  - channel: 4
+    id: sd_card_power
+    voltage: 2.7V
+    adjustable: true
+
+psram:
+  mode: hex
+  speed: 200MHz
+
+preferences:
+  flash_write_interval: 5min
+
+# http_request removed — was only used for C6 firmware manifest fetch, which
+# crashes SDIO (sdio_rx_get_buffer) when it races WiFi/BLE on the hosted link.
+
+# -------------------------------------------
+# Network hardware
+# -------------------------------------------
+
+esp32_hosted:
+  variant: ESP32C6
+  reset_pin: GPIO54
+  cmd_pin: GPIO19
+  clk_pin: GPIO18
+  d0_pin: GPIO14
+  d1_pin: GPIO15
+  d2_pin: GPIO16
+  d3_pin: GPIO17
+  active_high: true
+  sdio_frequency: 10MHz
+
+# C6 coprocessor firmware update disabled: HTTP manifest fetch on boot races
+# SDIO with WiFi/BLE and triggers sdio_rx_get_buffer asserts. Re-enable only
+# when you need to update the C6 (e.g. via esptool or a quiet bench setup).
+#
+# update:
+#   - platform: esp32_hosted
+#     id: esp32_c6_firmware
+#     name: ESP-Hosted Firmware
+#     icon: mdi:chip
+#     type: http
+#     source: https://esphome.github.io/esp-hosted-firmware/manifest/esp32c6.json
+#     update_interval: never
+#
+# button:
+#   - platform: template
+#     name: "Update C6 Firmware"
+#     icon: mdi:chip
+#     on_press:
+#       - update.perform:
+#           id: esp32_c6_firmware
+
+# # -------------------------------------------
+# # Internal outputs
+# # -------------------------------------------
+output:
+  - id: gpio_backlight_pwm
+    platform: ledc
+    pin: GPIO23
+      #    frequency: 100Hz
+      #    inverted: false
+    #min_power: 0.1 # To prevent the backlight from being too dim
+    #    max_power: 0.8 # To prevent overheating due to excessive lighting
+
+light:
+  - platform: monochromatic
+    output: gpio_backlight_pwm
+    name: Display Backlight
+    icon: mdi:lightbulb-on
+    id: display_backlight
+    restore_mode: ALWAYS_ON
+    default_transition_length: 0s
+    gamma_correct: 1.0
+
+
+
+
+# -------------------------------------------
+# Touchscreen
+# -------------------------------------------
+touchscreen:
+  - platform: gt911
+    id: my_touchscreen
+    reset_pin: GPIO22
+    interrupt_pin: GPIO21
+    address: 0x5D
+#   on_touch:
+#     - logger.log:
+#           format: Touch at (%d, %d)
+#           args: [touch.x, touch.y]
+#     - lambda: |-
+#           ESP_LOGI("cal", "x=%d, y=%d, x_raw=%d, y_raw=%0d",
+#               touch.x,
+#               touch.y,
+#               touch.x_raw,
+#               touch.y_raw
+#               );
+
+# -------------------------------------------
+# Display
+# -------------------------------------------
+display:
+  - platform: mipi_dsi
+    model: JC1060P470
+    id: my_display
+    auto_clear_enabled: false
+    update_interval: never
+    reset_pin: GPIO27
+    hsync_pulse_width: 20
+
+
+# -------------------------------------------
+# i2c bus
+# -------------------------------------------
+i2c:
+  - id: bus_a
+    sda: GPIO7
+    scl: GPIO8
+    frequency: 400kHz
