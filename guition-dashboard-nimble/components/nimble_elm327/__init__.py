@@ -1,6 +1,6 @@
 import esphome.codegen as cg
 from esphome import automation
-from esphome.components import sensor
+from esphome.components import disabler, sensor
 import esphome.config_validation as cv
 from esphome.const import CONF_ID, CONF_MAC_ADDRESS
 from esphome.core import ID
@@ -11,6 +11,8 @@ CONF_NOTIFY_UUID = "notify_uuid"
 CONF_WRITE_UUID = "write_uuid"
 CONF_PASSKEY = "passkey"
 CONF_AUTO_CONNECT = "auto_connect"
+CONF_DISABLER_ID = "disabler_id"
+CONF_DISABLER_TAG = "disabler_tag"
 CONF_RPM_SENSOR_ID = "rpm_sensor"
 CONF_KPH_SENSOR_ID = "kph_sensor"
 CONF_COOLANT_SENSOR_ID = "coolant_temp_sensor"
@@ -36,6 +38,8 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Required(CONF_WRITE_UUID): cv.string,
         cv.Optional(CONF_PASSKEY, default=0): cv.int_,
         cv.Optional(CONF_AUTO_CONNECT, default=True): cv.boolean,
+        cv.Optional(CONF_DISABLER_TAG): cv.string,
+        cv.Optional(CONF_DISABLER_ID): cv.use_id(disabler.Disabler),
         cv.Optional(CONF_RPM_SENSOR_ID): cv.use_id(sensor.Sensor),
         cv.Optional(CONF_KPH_SENSOR_ID): cv.use_id(sensor.Sensor),
         cv.Optional(CONF_COOLANT_SENSOR_ID): cv.use_id(sensor.Sensor),
@@ -78,6 +82,14 @@ async def to_code(config):
     cg.add(var.set_write_uuid(config[CONF_WRITE_UUID]))
     cg.add(var.set_passkey(config[CONF_PASSKEY]))
     cg.add(var.set_auto_connect(config[CONF_AUTO_CONNECT]))
+
+    if CONF_DISABLER_TAG in config:
+        if CONF_DISABLER_ID in config:
+            disabler_var = await cg.get_variable(config[CONF_DISABLER_ID])
+        else:
+            disabler_var = cg.RawExpression("disabler_disabler_id")
+        cg.add(var.set_disabler(disabler_var))
+        cg.add(var.set_disabler_tag(config[CONF_DISABLER_TAG]))
 
     for conf_key, setter in (
         (CONF_RPM_SENSOR_ID, "set_rpm_sensor"),

@@ -25,8 +25,23 @@ CONFIG_SCHEMA = (
 
 
 async def to_code(config):
-    var = await sensor.new_sensor(config)
-    await cg.register_component(var, config)
+    var = cg.new_Pvariable(config[CONF_ID])
+
+    if "disabler_tag" in config:
+        tag = config["disabler_tag"]
+        cg.add(cg.RawStatement(f"if(disabler_disabler_id->exists(\"{tag}\")) {{"))
+
+    await sensor.register_sensor(var, config)
+
+    reg_comp_config = (
+        {k: v for k, v in config.items() if k != "disabler_tag"}
+        if "disabler_tag" in config
+        else config
+    )
+    await cg.register_component(var, reg_comp_config)
+
+    if "disabler_tag" in config:
+        cg.add(cg.RawStatement("}"))
 
     if CONF_LAMBDA in config:
         template_ = await cg.process_lambda(

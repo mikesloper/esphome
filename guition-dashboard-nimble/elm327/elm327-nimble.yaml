@@ -1,4 +1,8 @@
 
+substitutions:
+  # Must match the tag saved via disabler.save_odbii1() from the device UI.
+  odbii_disabler_tag: odbii_elm327
+
 esphome:
   on_boot:
     - priority: 700
@@ -23,6 +27,7 @@ nimble_elm327:
   write_uuid: "fff2"
   passkey: 1234
   auto_connect: true
+  disabler_tag: ${odbii_disabler_tag}
   rpm_sensor: odbii_rpm
   kph_sensor: odbii_kph
   coolant_temp_sensor: odbii_coolant_temp
@@ -33,10 +38,12 @@ sensor:
   - platform: template
     name: "Mono ODBII RPM"
     id: odbii_rpm
+    disabler_tag: ${odbii_disabler_tag}
 
   - platform: template
     name: "Mono ODBII KPH"
     id: odbii_kph
+    disabler_tag: ${odbii_disabler_tag}
 
   - platform: template
     name: "Mono ODBII Coolant Temperature"
@@ -44,6 +51,7 @@ sensor:
     device_class: "temperature"
     unit_of_measurement: "°C"
     accuracy_decimals: 1
+    disabler_tag: ${odbii_disabler_tag}
 
   - platform: template
     name: "Mono ODBII Device Voltage"
@@ -51,9 +59,11 @@ sensor:
     device_class: "voltage"
     unit_of_measurement: "V"
     accuracy_decimals: 1
+    disabler_tag: ${odbii_disabler_tag}
 
 interval:
   - interval: 60s
+    disabler_tag: ${odbii_disabler_tag}
     then:
       - lambda: |-
           int uptime = 0;
@@ -81,24 +91,28 @@ interval:
           value: [0x41, 0x54, 0x45, 0x31, 0x0D, 0x0A]
 
   - interval: 10s
+    disabler_tag: ${odbii_disabler_tag}
     then:
       - nimble_elm327.write:
           id: lelink_nimble
           value: [0x30, 0x31, 0x30, 0x43, 0x0D, 0x0A]
 
   - interval: 11s
+    disabler_tag: ${odbii_disabler_tag}
     then:
       - nimble_elm327.write:
           id: lelink_nimble
           value: [0x30, 0x31, 0x30, 0x44, 0x0D, 0x0A]
 
   - interval: 20s
+    disabler_tag: ${odbii_disabler_tag}
     then:
       - nimble_elm327.write:
           id: lelink_nimble
           value: [0x30, 0x31, 0x30, 0x35, 0x0D, 0x0A]
 
   - interval: 14s
+    disabler_tag: ${odbii_disabler_tag}
     then:
       - nimble_elm327.write:
           id: lelink_nimble
