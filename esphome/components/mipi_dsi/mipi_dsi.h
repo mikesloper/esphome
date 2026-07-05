@@ -20,7 +20,9 @@ namespace esphome::mipi_dsi {
 
 constexpr static const char *const TAG = "display.mipi_dsi";
 const uint8_t SW_RESET_CMD = 0x01;
+const uint8_t SLEEP_IN = 0x10;
 const uint8_t SLEEP_OUT = 0x11;
+const uint8_t DISPLAY_OFF = 0x28;
 const uint8_t SDIR_CMD = 0xC7;
 const uint8_t MADCTL_CMD = 0x36;
 const uint8_t INVERT_OFF = 0x20;
@@ -65,6 +67,12 @@ class MIPI_DSI : public display::Display {
   void update() override;
 
   void setup() override;
+
+  // Blank the panel (DISPLAY OFF + SLEEP IN) so it stays dark. Intended to be
+  // called just before a clean reboot: the panel controller keeps this state
+  // across a CPU reset (only a reset_pin toggle in setup() wakes it), so the
+  // screen does not show its bright default color during the bootloader window.
+  void enter_sleep();
 
   void draw_pixels_at(int x_start, int y_start, int w, int h, const uint8_t *ptr, display::ColorOrder order,
                       display::ColorBitness bitness, bool big_endian, int x_offset, int y_offset, int x_pad) override;

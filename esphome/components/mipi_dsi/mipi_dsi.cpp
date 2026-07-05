@@ -175,6 +175,17 @@ void MIPI_DSI::setup() {
   ESP_LOGCONFIG(TAG, "MIPI DSI setup complete");
 }
 
+void MIPI_DSI::enter_sleep() {
+  if (this->io_handle_ == nullptr || this->is_failed())
+    return;
+  // Blank the output, then put the controller to sleep. Sent over the DBI
+  // command channel; the panel holds this state across a CPU reset so nothing
+  // is shown until setup() re-initializes it on the next boot.
+  esp_lcd_panel_io_tx_param(this->io_handle_, DISPLAY_OFF, nullptr, 0);
+  esp_lcd_panel_io_tx_param(this->io_handle_, SLEEP_IN, nullptr, 0);
+  ESP_LOGI(TAG, "Panel put to sleep");
+}
+
 void MIPI_DSI::update() {
   if (this->auto_clear_enabled_) {
     this->clear();
